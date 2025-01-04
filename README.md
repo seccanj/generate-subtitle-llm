@@ -85,5 +85,7 @@ https://www.syedgakbar.com/projects/dst
 
 11) Add your own-language subtitle to the other subtitles into a new video file (mkv):
 
+```
 ffmpeg -i input-with-english-subtitles.mp4 -f srt -sub_charenc UTF-8 -i subtitle-your-language.srt -map 0:v -map 0:a -map 0:s -map 1 -metadata:s:s:0 language=English -metadata:s:s:1 language=Yourlanguage -c:v copy -c:a copy -c:s srt video_NEW.mkv
+```
 
