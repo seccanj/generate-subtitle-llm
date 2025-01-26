@@ -108,10 +108,12 @@ source source-me.sh
 python3 subtitle_tool.py --help
 ```
 
+## Note
 All input video formats are supported.
 Supported output video formats are "mp4" and "mkv". 
 
 # Sample usage
+
 ## Video with no subtitles: generate from audio and translate into Italian
 python3 subtitle_tool.py -iv input_video.mkv -il eng --ilname English --generate --translate -ol ita --olname Italian -ov 'video-sub-ita.mkv'
 
@@ -120,6 +122,21 @@ python3 subtitle_tool.py -iv input_video.mkv -il eng --ilname English --extract 
 
 ## Add existing subtitle file to video
 python3 subtitle_tool.py -iv input_video.mkv -is subtitles.srt -il ita --ilname Italian -ol ita --olname Italian -ov 'video-sub-ita.mkv'
+
+# Useful commands
+
+## Monitor the NVidia GPU usage
+```
+watch -d nvidia-smi
+```
+
+## Delete AI models previously downloaded from Hugginface to local cache
+Interactive selection of the models to delete:
+
+```
+huggingface-cli delete-cache
+
+```
 
 # Credits
 
