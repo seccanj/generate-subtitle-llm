@@ -88,7 +88,7 @@ CMAKE_ARGS="-DGGML_CUDA=on" pip install --upgrade --force-reinstall --no-cache-d
 pip3 freeze > requirements.txt
 ```
 
-9) Setup environment vars (update the python version in these vars with your specific version):
+9) Setup environment vars (update the python version in these vars with your specific version and "${PWD}/env" with the path to your python virtual environment):
 
 ```
 export LD_LIBRARY_PATH=${PWD}/env/lib64/python3.12/site-packages/nvidia/cublas/lib:${PWD}/env/lib64/python3.12/site-packages/nvidia/cudnn/lib
@@ -101,27 +101,58 @@ To activate it, use this command (after checking the paths in the script):
 source source-me.sh
 ```
 
-10) Copy the input video file into this project's directory
-
-11) Run the program to display usage information:
+10) Run the program to display usage information:
 ```
 python3 subtitle_tool.py --help
+
+usage: subtitle_tool.py [-h] [-iv <input_video>] [-g] [-e] [-t] [-is <input_subtitle_file>] [-il <input_language>] [--ilname <input_language_full_name>] [-ol <output_language>]
+                        [--olname <output_language_full_name>] [-ov <output_video_file>] [-oos <output_original_subtitle_file>] [-ots <output_translated_subtitle_file>]
+
+Extract or generate, translate, add subtitles
+
+options:
+  -h, --help            show this help message and exit
+  -iv <input_video>     input video file. It may contain subtitles to extract if the -extract language option is used.
+  -g, --generate        generate subtitles from the <input_video> speech (audio), assuming they are speaking <input_language>.
+  -e, --extract         extract subtitle of <input_language> from the <input_video>.
+  -t, --translate       translate subtitles.
+  -is <input_subtitle_file>
+                        take the specified subtitle file as the one to be translated
+  -il <input_language>  specifies the language of the input subtitles (three letters, e.g. "eng", "ita", ...).
+  --ilname <input_language_full_name>
+                        provides the full name of the input (original) language. E.g. if the -il value is "eng", specify "English" here.
+  -ol <output_language>
+                        translate the subtitle into the specified language (three letters, e.g. "eng", "ita", ...).
+  --olname <output_language_full_name>
+                        provides the full name of the output language. E.g. if the -ol value is "eng", specify "English" here.
+  -ov <output_video_file>
+                        video file that will contain the original and the translated subtitles
+  -oos <output_original_subtitle_file>
+                        text file that contains or will contain the original subtitles
+  -ots <output_translated_subtitle_file>
+                        text file that contains or will contain the translated subtitles
 ```
 
 ## Note
 All input video formats are supported.
 Supported output video formats are "mp4" and "mkv". 
 
-# Sample usage
+# Sample usages
 
 ## Video with no subtitles: generate from audio and translate into Italian
+```
 python3 subtitle_tool.py -iv input_video.mkv -il eng --ilname English --generate --translate -ol ita --olname Italian -ov 'video-sub-ita.mkv'
+```
 
 ## Video with subtitles: extract and translate into Italian
+```
 python3 subtitle_tool.py -iv input_video.mkv -il eng --ilname English --extract --translate -ol ita --olname Italian -ov 'video-sub-ita.mkv'
+```
 
 ## Add existing subtitle file to video
+```
 python3 subtitle_tool.py -iv input_video.mkv -is subtitles.srt -il ita --ilname Italian -ol ita --olname Italian -ov 'video-sub-ita.mkv'
+```
 
 # Useful commands
 
@@ -131,7 +162,7 @@ watch -d nvidia-smi
 ```
 
 ## Delete AI models previously downloaded from Hugginface to local cache
-Interactive selection of the models to delete:
+This command allows for an interactive selection of the models to be deleted:
 
 ```
 huggingface-cli delete-cache
