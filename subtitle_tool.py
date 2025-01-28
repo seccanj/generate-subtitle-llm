@@ -117,6 +117,10 @@ class Subtitle:
             n_gpu_layers=28, n_threads=12, n_batch=521,
         )
 
+        vocabulary = {}
+        reused_translations = 0
+        reused_translations_percentage = 0.0
+
         print(f"Starting translation. Number of subtitles to translate: {num_subs}.")
 
         # record start time (in datetime format)
@@ -124,23 +128,50 @@ class Subtitle:
         
         sub_idx = 0
         for item in self.main_lang_subs:
-            subtitle_text = item["subtitle_text"].replace('\n', ' ').replace('\'', "").replace('"', "").replace('♪', "").replace('🎵', "").replace('🎶', "").strip()
+            
+            subtitle_text = item["subtitle_text"].replace('\n', ' ').replace('"', "").replace('♪', "").replace('🎵', "").replace('🎶', "").strip()
+            
             if len(subtitle_text) > 0:
-                translation = llm.create_completion(
-                    f"Translate into {output_language_name}: \"" + subtitle_text + 
-                        f"\". Respond only with the phrase translated into {output_language_name}. No explainations, comments, requests, appraisals or notes, no pronounciation notes. Do not translate proper nouns. Please.", 
-                    #f"Translate the following text from English into {output_language_name}.\nEnglish: " + item["subtitle_text"].replace('"', "").strip() + f".\n{output_language_name}:",
-                    max_tokens = 0,
-                    #suffix=None, max_tokens=16, temperature=0.8, top_p=0.95, min_p=0.05, typical_p=1.0, logprobs=None, echo=False, stop=[], frequency_penalty=0.0, presence_penalty=0.0, repeat_penalty=1.0, top_k=40, stream=False, seed=None, tfs_z=1.0, mirostat_mode=0, mirostat_tau=5.0, mirostat_eta=0.1, model=None, stopping_criteria=None, logits_processor=None, grammar=None, logit_bias=None
-                )
+                if subtitle_text in vocabulary and vocabulary[subtitle_text] != None:
 
-                self.translated_subs.append(
-                    {
-                        "start_time": item["start_time"],
-                        "end_time": item["end_time"],
-                        "subtitle_text": translation["choices"][0]["text"].replace("\"", "").replace('🇮🇹', "").replace('♪', "").replace('🎵', "").replace('🎶', "").strip().rstrip().lstrip().split("\n")[0] #llm.generate(item["subtitle_text"]),
-                    }
-                )
+                    #print(f"  Reused translation: \"{subtitle_text}\" => \"{vocabulary[subtitle_text] }\"")
+
+                    self.translated_subs.append(
+                        {
+                            "start_time": item["start_time"],
+                            "end_time": item["end_time"],
+                            "subtitle_text": vocabulary[subtitle_text],
+                        }
+                    )
+
+                    reused_translations += 1
+                    reused_translations_percentage = reused_translations / num_subs
+
+                else:
+                    try:
+                        translation = llm.create_completion(
+                            f"Translate into {output_language_name}: \"" + subtitle_text + 
+                                f"\". Respond only with the phrase translated into {output_language_name}. No explainations, comments, requests, appraisals or notes, no pronounciation notes. Do not translate proper nouns. Please.", 
+                            #f"Translate the following text from English into {output_language_name}.\nEnglish: " + item["subtitle_text"].replace('"', "").strip() + f".\n{output_language_name}:",
+                            max_tokens=0,
+                            temperature=0.0,
+                            #suffix=None, max_tokens=16, temperature=0.8, top_p=0.95, min_p=0.05, typical_p=1.0, logprobs=None, echo=False, stop=[], frequency_penalty=0.0, presence_penalty=0.0, repeat_penalty=1.0, top_k=40, stream=False, seed=None, tfs_z=1.0, mirostat_mode=0, mirostat_tau=5.0, mirostat_eta=0.1, model=None, stopping_criteria=None, logits_processor=None, grammar=None, logit_bias=None
+                        )
+
+                        translation = translation["choices"][0]["text"].replace("\"", "").replace('🇮🇹', "").replace('♪', "").replace('🎵', "").replace('🎶', "").strip().rstrip().lstrip().split("\n")[0]
+
+                        self.translated_subs.append(
+                            {
+                                "start_time": item["start_time"],
+                                "end_time": item["end_time"],
+                                "subtitle_text": translation,
+                            }
+                        )
+
+                        vocabulary[subtitle_text] = translation
+
+                    except:
+                        print(f"\nignoring exception on subtitle {sub_idx}\n")
 
             # record end time
             end = datetime.now()
@@ -150,7 +181,7 @@ class Subtitle:
             percentage = sub_idx / num_subs * 100
             eta = elapsed / sub_idx * num_subs - elapsed
 
-            print(f"\r   Translated {sub_idx} - {percentage:.2f}% - ETA: {format_time(eta, millisecs = False)}", end='\r', flush=True)
+            print(f"\r   Translated {sub_idx}/{num_subs} - {percentage:.2f}% - ETA: {format_time(eta, millisecs = False)} - Reused {reused_translations} ({reused_translations_percentage:.2f})", end='\r', flush=True)
 
         print(f"\nTranslated {num_subs} subtitles into {output_language_name} in {format_time(elapsed, millisecs = False)}.\n")
 
@@ -201,8 +232,8 @@ def extract_audio(input_video_file, input_language, output_audio_file):
     print(f"\nExtracted audio in {format_time(elapsed, millisecs = False)}.\n")
 
 
-def transcribe(audio):
-    print("Loading model openai/whisper-large-v2")
+def transcribe(audio, original_language):
+    print("Loading model openai/whisper-large-v3")
     #print("Using model openai/whisper-large-v3-turbo")
 
     #model = WhisperModel("small")
@@ -223,7 +254,11 @@ def transcribe(audio):
     # record start time (in datetime format)
     start = datetime.now()
 
-    segments, info = model.transcribe(audio)
+    segments, info = model.transcribe(
+        audio, 
+        #language=original_language[0:2].lower(),
+        #temperature=0.0,
+        )
 
     # record end time
     end = datetime.now()
@@ -451,7 +486,7 @@ def run():
             input_video_split = split_path(args.input_video)
             args.output_original_subtitle_file = input_video_split[0] + ".srt"
 
-        language, segments = transcribe(output_audio_file)
+        language, segments = transcribe(output_audio_file, args.input_language)
 
         generate_subtitle_file(segments, args.output_original_subtitle_file)
 
